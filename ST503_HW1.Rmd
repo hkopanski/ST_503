@@ -1,0 +1,153 @@
+---
+title: "ST503 HW1"
+author: "Halid Kopanski"
+date: "5/23/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(faraway)
+library(tidyverse)
+library(cowplot)
+```
+
+## Question 1
+
+### a)
+ 
+The data consists of 9 predictors, `r colnames(prostate)`, gleason and age are composed of integers, and svi is binary data. 
+ 
+```{r, echo = FALSE}
+head(prostate)
+str(prostate)
+summary(prostate)
+```
+
+The summary indicates that some of the data is normal or uniform in the cases where median and mean are nearly. 
+
+As can be seen in the histograms, the various predictors occupy varying ranges of values. In the cases of age, gleason, lpsa, and lweight a number of outliers can be seen.
+
+```{r pressure, echo=FALSE}
+prostate %>% pivot_longer(-svi, names_to = "Property", values_to = "Values") %>% 
+ggplot() + geom_boxplot(aes(x = Property, y = Values, fill = Property)) + 
+labs(x = "Property", y = "Value", title = "Boxplot of Prostate Data", 
+     subtitle = "by Halid Kopanski") +
+theme(legend.position = "none")
+```
+
+\newpage
+
+The histograms do indicate that age, prostate weight, cancer weight, and prostate specific antigen are normal like in thier distributions. The remaining predictors do not display any known distributions in first indication. 
+
+```{r, echo = FALSE, fig.dim = c(7, 9)}
+#options(repr.plot.width = 6, repr.plot.height = 6, repr.plot.res = 150)
+par(mfrow = c(4, 2))
+hist(prostate$age, main = "Age", xlab = "", ylab = "")
+hist(prostate$gleason, breaks = 8, main = "Gleason Score", xlab = "", ylab = "")
+hist(prostate$lweight, main = "Prostate Weight", xlab = "", ylab = "")
+hist(prostate$lbph, main = "Benign Prostatic Hyperplasia Amount", xlab = "", ylab = "")
+hist(prostate$lcavol, main = "Cancer Volume", xlab = "", ylab = "")
+hist(prostate$lcp, main = "Capsular Penetration", xlab = "", ylab = "")
+hist(prostate$lpsa, main = "Prostate Specific Antigen", xlab = "", ylab = "")
+hist(prostate$pgg45, main = "Percentage Gleason Scores(4 or 5)", xlab = "", ylab = "")
+```
+
+\newpage
+
+```{r, echo = FALSE}
+knitr::kable(table(prostate$svi), col.names = c("SVI Value", "Value Count"))
+
+ggplot(prostate) + geom_bar(aes(as.factor(svi)), fill = "red", col = "blue") + 
+  labs(title = "Bar Plot of Seminal Vesicle Invasion (SVI)", 
+  subtitle = "by Halid Kopanski", x = "SVI", y = "")
+```
+
+### b)
+
+In the following table, we can see which predictors had outlier values and how many.
+
+```{r, echo = FALSE}
+prostate %>% pivot_longer(-svi, names_to = "Property", values_to = "Values") %>% 
+  group_by(Property) %>% mutate(outlier = !between(Values, 
+  as.numeric(quantile(Values)[2]) - 1.5 * IQR(Values), 
+  as.numeric(quantile(Values)[4]) + 1.5 * IQR(Values))) %>%
+summarise(mean = mean(Values), 
+          iqr = IQR(Values),
+          upper = as.numeric(quantile(Values)[2]) - 1.5 * IQR(Values),
+          lower = as.numeric(quantile(Values)[4]) + 1.5 * IQR(Values),
+          no_outliers = sum(outlier)) %>% knitr::kable() 
+```
+
+\newpage
+
+## Question 4
+
+```{r, echo = FALSE}
+lin_model <- lm(gamble ~ ., data = teengamb)
+summary(lin_model)
+```
+
+```{r echo=FALSE}
+r_sqr <- summary(lin_model)$r.squared
+
+mu_res <- round(mean(lin_model$residuals), 2)
+med_res <- round(median(lin_model$residuals), 2)
+
+cor_fitted_actual <- cor(lin_model$fitted.values, teengamb$gamble)
+cor_fitted_income <- cor(lin_model$fitted.values, teengamb$income)
+```
+
+
+a)  The R$^2$ value is `r r_sqr`. The predictors explain 52.7% of the variance.
+
+b) Sex has the largest standard error (sum of the residuals) and is calculated to be 8.21
+
+c) Mean of the residuals is `r mu_res` and the median is `r med_res`.
+
+d) The correlation between the fitted and the measured values is `r cor_fitted_actual`.
+
+e) The correlation between the fitted and income level is `r cor_fitted_income`.
+
+f) Females on average spend `r abs(round(summary(lin_model)$coefficients["sex","Estimate"], 2))` less on gambling per year than males.
+
+\newpage
+
+## Question 5
+
+a)
+```{r, echo = FALSE}
+lin_cheddar <- lm(taste ~ . , cheddar)
+summary(lin_cheddar)
+```
+
+b)
+```{r echo=FALSE}
+r_sqr_emp <- cor(lin_cheddar$fitted.values, cheddar$taste)^2
+```
+
+This value is calculated to be `r r_sqr_emp` and is equal to the R$^2$ value.
+
+c)
+```{r echo=FALSE}
+lin_cheddar2 <- lm(taste ~ . + 0, cheddar)
+summary(lin_cheddar2)
+```
+
+The R$^2$ value without the intercept is `r round(summary(lin_cheddar2)$r.squared, 3)`. A more reasonable measure would be the adjusted R$^2$ which was found to be `r round(summary(lin_cheddar2)$adj.r.squared, 3)`
+
+d)
+```{r echo=FALSE}
+qrX <- qr(model.matrix(~ Acetic + H2S + Lactic, cheddar))
+
+Qf <- t(qr.Q(qrX)) %*% as.matrix(cheddar$taste)
+
+param_reg <- backsolve(qr.R(qrX), Qf)
+```
+
+`r knitr::kable(param_reg)`
+
+\newpage
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+
+```
