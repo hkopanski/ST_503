@@ -1,0 +1,179 @@
+---
+title: "HW#3"
+author: "Halid Kopanski"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(faraway)
+library(car)
+library(MASS)
+library(lmtest)
+library(tidyverse)
+```
+
+## LMR 4.1
+
+```{r echo = FALSE}
+pros_model1 <- lm(lpsa ~ ., data = prostate)
+summary(pros_model1)
+```
+
+a)
+
+```{r echo=FALSE}
+new_patient <- tibble(lcavol = 1.44692,  lweight = 3.62301,  age = 65.00000, 
+                      lbph = 0.30010,  svi = 0.00000,  lcp = -0.79851, 
+                      gleason = 7.0000,   pgg45 = 15.0000)
+
+predict(pros_model1, newdata = new_patient, interval = "confidence")
+predict(pros_model1, newdata = new_patient, interval = "prediction")
+mean(prostate$age)
+```
+
+b)
+
+```{r echo = FALSE}
+new_patient1 <- tibble(lcavol = 1.44692,  lweight = 3.62301,  age = 25.00000, 
+                      lbph = 0.30010,  svi = 0.00000,  lcp = -0.79851, 
+                      gleason = 7.0000,   pgg45 = 15.0000)
+
+predict(pros_model1, newdata = new_patient1, interval = "confidence")
+predict(pros_model1, newdata = new_patient1, interval = "prediction")
+```
+
+c)
+
+```{r echo = FALSE}
+pros_model2 <- lm(lpsa ~ lcavol + lweight + svi, data = prostate)
+summary(pros_model2)
+predict(pros_model2, newdata = new_patient1, interval = "confidence")
+predict(pros_model2, newdata = new_patient1, interval = "prediction")
+print(anova(pros_model2, pros_model1))
+```
+
+\newpage
+
+# LMR 6.1
+
+```{r echo = FALSE}
+sat_model1 <- lm(total ~ expend + salary + ratio + takers, data = sat)
+summary(sat_model1)
+```
+
+a)
+
+```{r echo = FALSE}
+plot(x = sat_model1$fitted.values, y = sat_model1$residuals, pch = 19,
+     main = "Residuals vs Fitted Values", xlab = "Fitted Values", ylab = "Residuals")
+res_line <- loess(sat_model1$residuals ~ sat_model1$fitted.values)
+j <- order(sat_model1$fitted.values)
+lines(sat_model1$fitted.values[j], res_line$fitted[j], col = "red", lwd = 3)
+abline(h = 0)
+```
+
+Results of the Breusch - Pagan Test 
+
+```{r echo = FALSE}
+bptest(sat_model1, studentize = FALSE)
+```
+
+The results of the Non Constant Variance Test
+
+```{r echo = FALSE}
+ncvTest(sat_model1)
+```
+
+b)
+
+```{r echo = FALSE}
+qqnorm(sat_model1$residuals, ylab = "Residuals", main = "Q-Q Plot (Normality)", pch = 19)
+qqline(sat_model1$residuals)
+```
+
+Results of the Shapiro and the Durbin-Watson Tests
+
+```{r echo = FALSE}
+shapiro.test(sat_model1$residuals)
+dwtest(sat_model1)
+```
+
+c)
+
+```{r echo = FALSE, fig.dim = c(6,6)}
+X <- sat %>% select(expend, salary, ratio, takers)
+X <- cbind(rep(1, nrow(X)), X)
+
+X <- data.matrix(X)
+
+#print(X)
+Xt <- t(X)
+
+XtX_inv <- solve(Xt %*% X)
+
+XtY <- Xt %*% sat$total
+
+beta_hat <- XtX_inv %*% XtY
+
+P <- X %*% XtX_inv %*% Xt
+
+res_mean <- mean(sat_model1$residuals)
+res_sd <- sd(sat_model1$residuals)
+stan_res <- (sat_model1$residuals - res_mean) / res_sd
+
+plot(x = diag(P), 
+     y = sat_model1$residuals, 
+     pch = 19,
+     main = "Residuals vs Leverage", 
+     xlab = "Leverage", 
+     ylab = "Residuals",
+     xlim = c(0, 0.35))
+text(diag(P), sat_model1$residuals, rownames(P), 
+     cex = 0.6, pos = 4, col = "red")
+
+hat_data <- cbind(1:50, diag(P))
+
+plot(hat_data, pch = 19, xlab = "", ylab = "hii values")
+abline(h = 2 * 5 / 50)
+text(hat_data[,1], hat_data[,2], names(diag(P)), 
+     cex = 0.5, pos = 4, col = "red")
+```
+
+
+
+```{r echo = FALSE, fig.dim = c(6,6)}
+dotchart(sort(diag(P)), pch = 19, cex = 0.5)
+```
+d)
+
+```{r echo = FALSE}
+outlierTest(sat_model1)
+
+plot(x = sat_model1$fitted.values, y = rstandard(sat_model1), pch = 19,
+     main = "Standardized Residuals vs Fitted Values", xlab = "Fitted Values", ylab = "Standardized Residuals")
+abline(h = c(0, 2, -2), col = "blue", lty = 4, lwd = 2)
+text(x = sat_model1$fitted.values, y = rstandard(sat_model1), rownames(sat), 
+     cex = 0.5, pos = 4, col = "red")
+```
+
+```{r echo = FALSE}
+#cooks.distance(sat_model1)
+
+halfnorm(diag(P), labs = rownames(P), ylab = "Leverages")
+abline(h = 2 * sat_model1$rank / nrow(sat))
+
+SST <- sum((sat$total - mean(sat$total))^2)
+SSR <- sum((sat_model1$fitted.values - mean(sat$total))^2)
+SSE <- sum((sat$total - sat_model1$fitted.values)^2)
+MSR <- SSR/(sat_model1$rank - 1)
+MSE <- SSE/(nrow(sat) - sat_model1$rank)
+```
+
+e)
+
+```{r echo = FALSE, fig.dim = c(6,6)}
+influenceIndexPlot(sat_model1)
+cooks_dis_calc <- sat_model1$residuals^2 / (sat_model1$rank * MSE) * (diag(P)/(1-diag(P))^2)
+dotchart(sort(cooks_dis_calc), cex = 0.5, pch = 19)
+```
