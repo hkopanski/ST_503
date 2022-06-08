@@ -131,7 +131,9 @@ plot(x = diag(P),
      xlim = c(0, 0.35))
 text(diag(P), sat_model1$residuals, rownames(P), 
      cex = 0.6, pos = 4, col = "red")
+```
 
+```{r echo = FALSE}
 hat_data <- cbind(1:50, diag(P))
 
 plot(hat_data, pch = 19, xlab = "", ylab = "hii values")
@@ -145,6 +147,7 @@ text(hat_data[,1], hat_data[,2], names(diag(P)),
 ```{r echo = FALSE, fig.dim = c(6,6)}
 dotchart(sort(diag(P)), pch = 19, cex = 0.5)
 ```
+
 d)
 
 ```{r echo = FALSE}
@@ -174,6 +177,121 @@ e)
 
 ```{r echo = FALSE, fig.dim = c(6,6)}
 influenceIndexPlot(sat_model1)
-cooks_dis_calc <- sat_model1$residuals^2 / (sat_model1$rank * MSE) * (diag(P)/(1-diag(P))^2)
+```
+
+```{r echo = FALSE, fig.dim = c(6,6)}
+cooks_dis_calc <- sat_model1$residuals^2 / 
+  (sat_model1$rank * MSE) * (diag(P)/(1-diag(P))^2)
+
 dotchart(sort(cooks_dis_calc), cex = 0.5, pch = 19)
+```
+
+\newpage
+
+# LMR 6.8
+
+a)
+
+```{r echo = FALSE}
+fat_model1 <- lm(brozek ~ age + weight + height + neck + chest + 
+                   abdom + hip + thigh + knee + ankle + biceps + 
+                   forearm + wrist, data = fat)
+
+X <- model.matrix(fat_model1)[,-1]
+eigen_X <- eigen(t(X) %*% X)
+
+sqrt(eigen_X$values[1]/eigen_X$values)
+
+vif_x <- rep(0, ncol(X))
+
+
+for(i in 1:ncol(X)){
+    vif_x[i] <- 1 / (1 - summary(lm(X[,i] ~ X[,-i]))$r.squared)    
+}
+
+vif_x <- cbind(colnames(X), vif_x)
+print(vif_x)
+```
+
+b)
+
+```{r echo = FALSE}
+new_fat <- fat[-c(39,42),]
+
+fat_model2 <- lm(brozek ~ age + weight + height + neck + chest + 
+                   abdom + hip + thigh + knee + ankle + biceps + 
+                   forearm + wrist, data = new_fat)
+
+X2 <- model.matrix(fat_model2)[,-1]
+eigen_X2 <- eigen(t(X2) %*% X2)
+
+sqrt(eigen_X2$values[1]/eigen_X2$values)
+
+vif_x2 <- rep(0, ncol(X2))
+
+
+for(i in 1:ncol(X2)){
+    vif_x2[i] <- 1 / (1 - summary(lm(X2[,i] ~ X2[,-i]))$r.squared)    
+}
+
+vif_x2 <- cbind(colnames(X2), vif_x2)
+print(vif_x2)
+```
+
+c)
+
+```{r echo = FALSE}
+
+fat_model3 <- lm(brozek ~ age + weight + height, data = new_fat)
+summary(fat_model3)
+
+X3 <- model.matrix(fat_model3)[,-1]
+eigen_X3 <- eigen(t(X3) %*% X3)
+
+sqrt(eigen_X3$values[1]/eigen_X3$values)
+
+vif_x3 <- rep(0, ncol(X3))
+
+
+for(i in 1:ncol(X3)){
+    vif_x3[i] <- 1 / (1 - summary(lm(X3[,i] ~ X3[,-i]))$r.squared)    
+}
+
+vif_x3 <- cbind(colnames(X3), vif_x3)
+print(vif_x3)
+
+```
+
+d)
+
+```{r echo = FALSE}
+
+fat_1 <- as.data.frame(t(apply(X3, 2, median)))
+
+predict(fat_model3, newdata = fat_1, interval = "prediction")
+
+```
+
+e)
+
+```{r echo = FALSE}
+
+fat_2 <- as.data.frame(cbind(age = 40, weight = 200, height = 73))
+
+predict(fat_model3, newdata = fat_2, interval = "prediction")
+
+```
+
+f)
+
+```{r echo = FALSE}
+fat_3 <- as.data.frame(cbind(age = 40, weight = 130, height = 73))
+
+predict(fat_model3, newdata = fat_3, interval = "prediction")
+```
+
+\newpage
+
+## Code
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
 ```
