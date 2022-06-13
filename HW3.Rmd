@@ -11,6 +11,7 @@ library(car)
 library(MASS)
 library(lmtest)
 library(tidyverse)
+library(nlme)
 ```
 
 ## LMR 4.1
@@ -55,7 +56,7 @@ print(anova(pros_model2, pros_model1))
 
 \newpage
 
-# LMR 6.1
+## LMR 6.1
 
 ```{r echo = FALSE}
 sat_model1 <- lm(total ~ expend + salary + ratio + takers, data = sat)
@@ -188,7 +189,7 @@ dotchart(sort(cooks_dis_calc), cex = 0.5, pch = 19)
 
 \newpage
 
-# LMR 6.8
+## LMR 6.8
 
 a)
 
@@ -291,6 +292,425 @@ predict(fat_model3, newdata = fat_3, interval = "prediction")
 ```
 
 \newpage
+
+## Question 4
+
+### Part A
+```{r echo = FALSE}
+df_commercial <- read_table("commercial_property.txt")
+#a)
+options(repr.plot.width = 8, repr.plot.height = 6, repr.plot.res = 150)
+df_commercial %>% pairs()
+```
+
+The only pair of variables that show a relationship is between tot_sqft and rental_rates which displays a slight linear relationship. The other pairs do not show strong relationship, linear or otherwise.
+
+### Part B
+
+```{r echo = FALSE}
+#b)
+cor(df_commercial)
+```
+
+The strongest positive correlation is the one between tot_sqft and rental_rates. The strongest negative is the one between opp_expenses and vac_rates. In both of those cases, the relationship was moderate. Age showed a moderate negative ralation with rental_rates and vac_rates. It also had a moderate positive relationship with tot_squft and opp_expenses. Overall, the only two pairs that did not indicate a significant relationship is vac_rates/rental_rates and vac_rates/tot_squft. 
+
+### Part C
+```{r echo = FALSE}
+#c)
+comm_model1 <- lm(rental_rates ~ ., data = df_commercial)
+summary(comm_model1)
+comm_model1$coefficients
+```
+
+**c. part a) through c)**  
+y = 12.2 - 0.142 $x_1$ + 0.282 $x_2$ + 0.620 $x_3$ + 0.000000792 $x_4$  
+where:  
+$x_1$ -> age of dwelling (age)  
+$x_2$ -> operating expenses and taxes (opp_expenses)  
+$x_3$ -> vacancy rates (vac_rates)  
+$x_4$ -> total square footage (tot_squft) 
+
+The predictor with seemingly the smallest effect on rental rates is total square footage as can be seen by the near zero value, but it is still statistically significant. The small coefficient value is offset by the large values of the predictor itself. Vacancy rates were the least statistically significant predictor as can be seen with the low p value. If this predictor is dropped from the model, the model prediction will still produce a reasonably accurate result. Age and operating expenses were both statistically significant to the model and produced a large effect on the resulting prediction.
+
+```{r echo = FALSE}
+sprintf("The R squared values is %.3f", summary(comm_model1)$r.squared)
+sprintf("The adjusted R squared values is %.3f", summary(comm_model1)$adj.r.squared)
+```
+
+
+**c. part d)**
+The null hypothesis, $H_0$, states that all 4 coefficients are equal to zero. The alternate hypothesis, $H_A$ states that at least one of the coefficients is not zero. The test statistic is given as a the F-statistic in the model summary which is equal to 26.76. This results in a p value of nearly zero using an f distribution of degrees of freedom of 4 and 76. Since the p value is less than the 0.05 significance level, we have enough evidence to reject the null hypothesis in favor of the alternative hypothesis.
+
+**c. part e)**
+```{r echo = FALSE}
+#c. part e)
+
+summary(gls(rental_rates ~ ., data = df_commercial))
+```
+
+**c. part f)**
+
+The test statistic for $\beta_3$ is 0.570 which gives a p value of 0.5704. If $H_0$ states that $\beta_3 = 0$ and $H_A$ states that $\beta_3$ is not equal to zero, then in this case we do no have enough evidence to reject the null hypothesis. This means that there is not enough evidence to reject the possibility that $\beta_3$ is zero. We can then say that $\beta$ is not statistically significant to the model.
+
+**c. part h)**
+
+```{r echo = FALSE}
+# c. part h)
+
+comm_model2 <- lm(rental_rates ~ .-vac_rates, data = df_commercial)
+summary(comm_model2)
+```
+
+### Part D
+
+**d. part I)**
+
+```{r echo = FALSE}
+#d. part I)
+model_coeff <- summary(comm_model2)$coefficients
+
+model_coeff <- as_tibble(model_coeff)
+
+colnames(model_coeff)[2] = 'Error'
+
+model_coeff <- model_coeff %>% mutate(CI90neg = Estimate - qt(0.95, 77) * Error, CI90pos = Estimate + qt(0.95, 77) * Error)
+
+knitr::kable(model_coeff)
+```
+
+**d. part II**
+
+```{r echo = FALSE}
+#d. part II)
+
+pvals <- summary(comm_model2)$coef[,4]
+padj <- p.adjust(pvals, method="bonferroni")
+print(coef(comm_model2)[padj < 0.1])
+```
+
+**d. part III**
+```{r echo = FALSE}
+#d. part III)
+new_dwellings <- tibble(age = c(5.0, 6.0, 14.0, 12.0),
+                        opp_expenses = c(8.25, 8.50, 11.50, 10.25),
+                        vac_rates = rep(0, 4),
+                        tot_squft = c(250000, 270000, 300000, 310000))
+
+new_dwellings <- new_dwellings %>% mutate(pred_rrates = predict(comm_model2, newdata = new_dwellings))
+print(new_dwellings)
+```
+
+**d. part IV**
+```{r echo = FALSE}
+#d part IV)
+new_dwellings2 <- tibble(age = c(4.0, 6.0, 12.0),
+                         opp_expenses = c(10.0, 11.50, 12.5),
+                         vac_rates = rep(0, 3),
+                         tot_squft = c(80000, 120000, 340000))
+new_dwellings2 <- new_dwellings2 %>% mutate(pred_rrates = predict(comm_model2, newdata = new_dwellings2))
+print(new_dwellings2)
+predict(comm_model2, newdata = new_dwellings2, interval = "prediction", level = 0.95)
+```
+
+### Part E
+
+**e. part a)**
+
+```{r echo = FALSE}
+
+plot(x = comm_model2$fitted.values, y = comm_model2$residuals, pch = 19,
+     main = "Residuals vs Fitted Values", xlab = "Fitted Values", ylab = "Residuals")
+
+```
+
+The plot indicates that variance is constant and that the data is normal. A deeper investigation is needed in order to confirm the strength of these assessments.
+
+**e. part b)**
+
+```{r echo =FALSE}
+# e part b)
+qqnorm(comm_model2$residuals, ylab = "Residuals", main = "Q-Q Plot (Normality)", pch = 19)
+qqline(comm_model2$residuals)
+```
+
+The QQ plot shows some deviation from normality. This means that the data was not strictly following a normal distribution. 
+
+```{r echo = FALSE}
+boxplot(comm_model2$residuals)
+```
+
+The boxplot shows a number of outliers at both ends of the distribution. These should be investigated more using specific outlier testing methods.
+
+```{r echo = FALSE}
+hist(comm_model2$residuals, breaks = 20, xlab = "Model Residuals", main = "Histogram of Residuals", prob = TRUE)
+lines(density(comm_model2$residuals), col = "red") 
+```
+
+The histogram shows more evidence for outliers and even some skew in the data.
+
+**e. part c)**
+```{r echo = FALSE}
+#e part c)
+bptest(comm_model2, studentize = FALSE)
+```
+
+**e part d and g)**
+```{r echo = FALSE}
+#e part d and g
+influenceIndexPlot(comm_model2)
+```
+
+The diagnostic plots do reveal a few outliers, high leverage, and influential points. Data points 6 and 62 are outliers, while 3, 62, 65, and 80 indicate high leverage/influence. 3, 6, 62, and 80 can be dropped from the model. 65 can be left in the model since it is not too much higher in leverage than the other points.
+
+**e part e and f)**
+
+```{r echo = FALSE}
+#e part e and f)
+
+shapiro.test(comm_model2$residuals)
+dwtest(comm_model2)
+```
+
+The high p value calculated from the Shapiro-Wilk test, means that we do not have enough evidence to reject the null hypothesis ($H_0$ : the data is normal). This means our assumption of the normality of the data is held true. The Durbin-Watson test indicates that the model errors are correlated ($H_0$: errors are not correlated, $H_A$: They are correlated). The small p value ( < 0.05) means that we have enough evidence to reject the null hypothesis.
+
+### Part F
+
+```{r echo = FALSE}
+# Part F
+comm_model3 <- lm(rental_rates ~ . - vac_rates, df_commercial[-c(3, 6, 62, 80), ])
+
+summary(comm_model3)
+```
+
+By dropping outliers, $R^2$ values did not improve in the new model. They actually dropped slightly, indicating that outliers might not have had a strong effect on the model after all.
+
+```{r echo = FALSE}
+comm_model4 <- lm(rental_rates ~ . - vac_rates, df_commercial[-c(6, 62, 80), ])
+
+summary(comm_model4)
+```
+
+Leaving data point 3 in the model improved the $R^2$ values a little. 
+
+```{r echo = FALSE}
+comm_model5 <- lm(rental_rates ~ . - vac_rates, df_commercial[-c(6, 62), ])
+
+summary(comm_model5)
+```
+
+Removing outliers and ignoring high leverage also improved the model slightly as can be seen by the higher $R^2$ values.
+
+### Part G
+
+```{r echo = FALSE}
+# G 
+single_unit <- tibble(age = 5, opp_expenses = 8.25, vac_rates = 0, tot_squft = 250000)
+
+predict(comm_model5, newdata = single_unit, level = 0.90, interval = "prediction")
+```
+
+\newpage
+
+## 5A
+
+```{r echo = FALSE}
+df_software <- read_table("software_sales.txt") 
+df_software$Software <- as.factor(df_software$Software)
+
+#5A
+sw_model1 <- lm(SalesThisQuarter ~ . - SalesLastQuarter - Rep, data = df_software)
+summary(sw_model1)
+```
+
+### Part I
+
+y = 81.6 - 2.00 $x_1$ - 7.67 $x_2$   
+where:    
+$x_1$ -> Whether Software 2 was used  
+$x_2$ -> Whether Software 3 was used 
+
+$E(y | x_1 = 1, x_2 = 0) = (81.6 - 2.00) - 7.67 * 0 = 79.42 $   
+$E(y | x_1 = 0, x_2 = 1) = (81.6 - 7.67) - 2.00 * 0 = 73.93 $ 
+
+### Part II
+```{r echo = FALSE}
+# Part ii)
+anova(sw_model1)
+
+sprintf("Variance explained by the software is %0.3f", (anova(sw_model1)[1,2] / sum(anova(sw_model1)[,2])))
+```
+
+### Part III
+
+$H_0$ states that software has no effect on sales.  
+$H_A$ states that software does have an effect on sales.
+
+The *f statistic* given from the anova table, 1.47, and the corresponding *p value*, 0.25, indicate that we do not have enough evidence to reject the null hypothesis at the 0.05 significance level.
+
+## 5B
+
+```{r echo = FALSE}
+#5B
+sw_model2 <- lm(SalesThisQuarter ~ . -Rep, data = df_software)
+summary(sw_model2)
+```
+
+### Part I
+
+y = -36.44 + 0.754 $x_1$ - 1.284 $x_2$ + 1.502 $x_3$    
+where:    
+$x_1$ -> Whether Software 2 was used  
+$x_2$ -> Whether Software 3 was used  
+$x_3$ -> Sales from last quarter
+
+$E(y | x_1 = 1, x_2 = 0) = (-36.44 + 0.754) - 1.284 * 0 + 1.502 x_3 = -35.69 + 1.502 x_3$   
+$E(y | x_1 = 0, x_2 = 1) = (-36.44 - 1.284) + 0.754 * 0 + 1.502 x_3 = -37.72 + 1.502 x_3$
+
+### Part II - V
+
+$H_0$ states that software has no effect on sales.  
+$H_A$ states that software does have an effect on sales.
+
+The *f statistic* given from the anova table, 3.76, and the corresponding *p value*, 0.0341, indicates that we do have enough evidence to reject the null hypothesis at the 0.05 significance level.
+
+### Part VI
+
+```{r echo = FALSE}
+anova(sw_model2)
+
+sprintf("Variance explained by the software is %0.3f", (anova(sw_model2)[1,2] / sum(anova(sw_model2)[,2])))
+```
+
+## 5C
+
+```{r echo = FALSE}
+sw_model3 <- lm(SalesThisQuarter ~ SalesLastQuarter:Software + SalesLastQuarter, data = df_software)
+summary(sw_model3)
+```
+
+### Part I - III
+y = -36.22 + 1.504 $x_1$ + 1.504 $x_2$ + 1.482 $x_3$  
+where:    
+$x_1$ -> Interaction term between sales last quarter and software 1    
+$x_2$ -> Interaction term between sales last quarter and software 2  
+$x_3$ -> Interaction term between sales last quarter and software 4  
+
+Part i)
+
+$E(y | x_1 = 1, x_2 = 0, x_3 = 0) = (-36.22 + 1.504) - 7.67 * 0 = -34.72 $   
+$E(y | x_1 = 0, x_2 = 1, x_3 = 0) = (-36.22 + 1.504) - 2.00 * 0 = -34.72 $  
+$E(y | x_1 = 0, x_2 = 0, x_3 = 1) = (-36.22 + 1.482) - 2.00 * 0 = -34.74$ 
+
+```{r echo = FALSE}
+null_model1 <- lm(SalesThisQuarter ~ NULL, data = df_software)
+knitr::kable(anova(null_model1, sw_model1))
+knitr::kable(anova(sw_model1))
+
+SST <- sum((df_software$SalesThisQuarter - mean(df_software$SalesThisQuarter))^2)
+SSR <- sum((sw_model1$fitted.values - mean(df_software$SalesThisQuarter))^2)
+SSE <- sum((df_software$SalesThisQuarter - sw_model1$fitted.values)^2)
+MSR <- SSR/(sw_model1$rank - 1)
+MSE <- SSE/(nrow(df_software) - sw_model1$rank)
+df_vector <- c(sw_model1$rank - 1, nrow(df_software) - sw_model1$rank, nrow(df_software) - 1)
+SS <- c(SSR, SSE, SST)
+
+anova_table <- as_tibble(cbind(df_vector, SS))
+
+anova_table <- anova_table %>% mutate(MS = SS/df_vector)
+
+anova_table[3,3] <- NA
+
+F_stat <- c(as.numeric(anova_table[1,3] / anova_table[2,3]), NA, NA)
+
+p_value <- c(1 - (pf(F_stat[1], (sw_model1$rank - 1) , (nrow(df_software) - sw_model1$rank))), NA, NA)
+
+anova_table <- cbind(anova_table, F_stat, p_value)
+
+knitr::kable(anova_table)
+```
+
+\newpage
+
+## 6
+
+**part a**
+
+```{r echo = FALSE}
+df_pigs <- read_table("pig_weight.txt")
+df_pigs$Drug <- as.factor(df_pigs$Drug)
+pig_model1 <- lm(Pigweight ~ ., data = df_pigs)
+summary(pig_model1)
+pig_model1$coefficients[1] + pig_model1$coefficients[2]
+pig_model1$coefficients[1] + pig_model1$coefficients[3]
+```
+
+$$y = \beta_0 + \beta_1 x_1 +  \beta_2 x_2 + \beta_3 x_3 + \beta_4 x_4 + \epsilon$$
+
+$x_1$ -> Whether drug 2 was administered  
+$x_2$ -> Whether drug 3 was administered  
+$x_3$ -> Mom weight  
+$x_4$ -> Dad weight
+
+**part b**
+
+|*Drug*|$E(y | x)$|
+|-|-|
+|1|7.48 - 0.264 $x_3$ + 0.174 $x_4$|
+|2|5.88 - 0.264 $x_3$ + 0.174 $x_4$|
+|3|6.78 - 0.264 $x_3$ + 0.174 $x_4$|
+
+**part c**
+
+```{r echo = FALSE}
+# Part c
+new_pig <- tibble(Drug = as.factor(2), Momweight = 140, Dadweight = 185)
+
+predict(pig_model1, newdata = new_pig, interval = "prediction", level = 0.95)
+```
+
+**part d**
+
+```{r echo = FALSE}
+# Part d
+delta_2_3 <- summary(pig_model1)$coefficient[2,1] - summary(pig_model1)$coefficient[3,1]
+
+SE_delta <- summary(pig_model1)$coefficient[2,2] + summary(pig_model1)$coefficient[3,2]
+
+t_cv <- qt(0.95, 68)
+
+d2d3_CI <- delta_2_3 + c(-1, 1) * SE_delta * t_cv
+```
+
+The 95% confidence interval is $$\Delta_{drug 2, drug3} \pm t_{critical value} * SE_{drug2 + drug 3}$$
+
+which calculates to be `r d2d3_CI`.
+
+**part e. i)**
+
+```{r echo = FALSE}
+#Part e
+pig_model_nodrug <- lm(Pigweight ~ Momweight + Dadweight, data = df_pigs)
+pig_model_noparent <- lm(Pigweight ~ Drug, data = df_pigs)
+
+anova(pig_model_nodrug, pig_model1)
+#anova(pig_model_noparent, pig_model1)
+
+#anova(pig_model1)
+```
+
+$H_0: \beta_0 = \beta_1 = \beta_2 = 0$  
+$H_A: \beta_0 \neq 0 \text{ or } \beta_1 \neq 0 \text{ or } \beta_2 \neq 0$ 
+
+In this case, the null hypothesis can be rejected at the 0.05 significance level according to the ANOVA table. The type of drug does have an effect on the final pig weight.
+
+**part e. ii)**
+
+**part e. iii)**
+
+**part e. iv)**
+
+\newpage 
+
 
 ## Code
 ```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}

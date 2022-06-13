@@ -1,0 +1,40 @@
+---
+title: "ANOVA notes"
+author: "Halid Kopanski"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r message=FALSE}
+library(tidyverse)
+df_pigs <- read_table("pig_weight.txt")
+df_pigs$Drug <- as.factor(df_pigs$Drug)
+pig_model1 <- lm(Pigweight ~ ., data = df_pigs)
+summary(pig_model1)
+```
+\newpage
+
+### Null Model
+
+```{r cars}
+null_model <- lm(Pigweight ~ NULL, data = df_pigs)
+```
+
+### No Drug Model
+
+```{r}
+nodrug_model <- lm(Pigweight ~ Momweight + Dadweight, data = df_pigs)
+summary(nodrug_model)
+```
+
+\newpage
+
+### ANOVA
+
+```{r}
+anova(pig_model1)
+
+anova(null_model, pig_model1)
+
+anova(nodrug_model, pig_model1)
+```

@@ -1,0 +1,26 @@
+null_model1 <- lm(SalesThisQuarter ~ NULL, data = df_software)
+summary(sw_model1)
+knitr::kable(anova(null_model1, sw_model1))
+knitr::kable(anova(sw_model1))
+
+SST <- sum((df_software$SalesThisQuarter - mean(df_software$SalesThisQuarter))^2)
+SSR <- sum((sw_model1$fitted.values - mean(df_software$SalesThisQuarter))^2)
+SSE <- sum((df_software$SalesThisQuarter - sw_model1$fitted.values)^2)
+MSR <- SSR/(sw_model1$rank - 1)
+MSE <- SSE/(nrow(df_software) - sw_model1$rank)
+df_vector <- c(sw_model1$rank - 1, nrow(df_software) - sw_model1$rank, nrow(df_software) - 1)
+SS <- c(SSR, SSE, SST)
+
+anova_table <- as_tibble(cbind(df_vector, SS))
+
+anova_table <- anova_table %>% mutate(MS = SS/df_vector)
+
+anova_table[3,3] <- NA
+
+F_stat <- c(as.numeric(anova_table[1,3] / anova_table[2,3]), NA, NA)
+
+p_value <- c(1 - (pf(F_stat[1], (sw_model1$rank - 1) , (nrow(df_software) - sw_model1$rank))), NA, NA)
+
+anova_table <- cbind(anova_table, F_stat, p_value)
+
+knitr::kable(anova_table)
