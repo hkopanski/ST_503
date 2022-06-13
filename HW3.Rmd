@@ -29,7 +29,7 @@ new_patient <- tibble(lcavol = 1.44692,  lweight = 3.62301,  age = 65.00000,
                       gleason = 7.0000,   pgg45 = 15.0000)
 
 predict(pros_model1, newdata = new_patient, interval = "confidence")
-predict(pros_model1, newdata = new_patient, interval = "prediction")
+#predict(pros_model1, newdata = new_patient, interval = "prediction")
 mean(prostate$age)
 ```
 
@@ -40,9 +40,12 @@ new_patient1 <- tibble(lcavol = 1.44692,  lweight = 3.62301,  age = 25.00000,
                       lbph = 0.30010,  svi = 0.00000,  lcp = -0.79851, 
                       gleason = 7.0000,   pgg45 = 15.0000)
 
+print(new_patient1)
 predict(pros_model1, newdata = new_patient1, interval = "confidence")
-predict(pros_model1, newdata = new_patient1, interval = "prediction")
+#predict(pros_model1, newdata = new_patient1, interval = "prediction")
 ```
+
+In the case of the 65 year old, their data fit within the original data. The mean age of the data set was `r round(mean(prostate$age), 2)` which is quite close to the patient's age. The 20 year was too far from the mean of the original data and there fore introduced higher variance.
 
 c)
 
@@ -53,6 +56,8 @@ predict(pros_model2, newdata = new_patient1, interval = "confidence")
 predict(pros_model2, newdata = new_patient1, interval = "prediction")
 print(anova(pros_model2, pros_model1))
 ```
+
+There is less error in the reduced model due to the less degrees of freedom. This reduced the uncertainty in the prediction. The reduced model is preferable due to less error and less likely to be overfit to the original data. 
 
 \newpage
 
@@ -75,6 +80,8 @@ abline(h = 0)
 ```
 
 Results of the Breusch - Pagan Test 
+
+The plot seems to show that there is a slight curve to the residuals which would point to the data variance not being constant but the Breusch Pagan test results indicate otherwise. The test did not provide sufficient evidence to reject the null hypothesis which states that the data variance is constant (alternate hypothesis states it is not constant).
 
 ```{r echo = FALSE}
 bptest(sat_model1, studentize = FALSE)
@@ -99,6 +106,8 @@ Results of the Shapiro and the Durbin-Watson Tests
 shapiro.test(sat_model1$residuals)
 dwtest(sat_model1)
 ```
+
+The QQ plot does indicate some deviation from normality at higher quantiles, but the shapiro test did not provide enough evidence to reject the null hypothesis of the data being normal.
 
 c)
 
@@ -144,10 +153,11 @@ text(hat_data[,1], hat_data[,2], names(diag(P)),
 ```
 
 
-
 ```{r echo = FALSE, fig.dim = c(6,6)}
 dotchart(sort(diag(P)), pch = 19, cex = 0.5)
 ```
+
+A number of high leverage points exists. Mainly Utah and California but also Connecticut and New Jersey. Dropping Utah and California and refitting the model should be considered. Centering is also an option.
 
 d)
 
@@ -174,6 +184,8 @@ MSR <- SSR/(sat_model1$rank - 1)
 MSE <- SSE/(nrow(sat) - sat_model1$rank)
 ```
 
+The outlier test did not reveal any outliers, but some of the plots indicate that Utah and California do stand out. Dropping them should be considered.
+
 e)
 
 ```{r echo = FALSE, fig.dim = c(6,6)}
@@ -187,9 +199,19 @@ cooks_dis_calc <- sat_model1$residuals^2 /
 dotchart(sort(cooks_dis_calc), cex = 0.5, pch = 19)
 ```
 
+Utah appears to be influential, in addition to having high leverage and being an outlier. Refitting the model without Utah would be recommended.
+
+f)
+
+```{r echo = FALSE}
+pairs(sat)
+```
+
+Total is strongly linear with verbal and math, but this is not surprising. Takers indicates somewhat of a negative relationship with total. The remaining three appear not to have a strong relationship with total.
+
 \newpage
 
-## LMR 6.8
+## LMR 7.8
 
 a)
 
@@ -210,9 +232,11 @@ for(i in 1:ncol(X)){
     vif_x[i] <- 1 / (1 - summary(lm(X[,i] ~ X[,-i]))$r.squared)    
 }
 
-vif_x <- cbind(colnames(X), vif_x)
+vif_x <- tibble(colnames(X), vif_x)
 print(vif_x)
 ```
+
+We can see some quite large condition and VIF numbers. Eigenvalues over 30 point to collinearity, of which there are a few. Inspecting the VIF table, shows a number of values over 10 (weight. abdom, hip, and maybe chest). Overall, it can be said that there is a high degree of collinearity in the data.  
 
 b)
 
@@ -235,9 +259,11 @@ for(i in 1:ncol(X2)){
     vif_x2[i] <- 1 / (1 - summary(lm(X2[,i] ~ X2[,-i]))$r.squared)    
 }
 
-vif_x2 <- cbind(colnames(X2), vif_x2)
+vif_x2 <- tibble(colnames(X2), vif_x2)
 print(vif_x2)
 ```
+
+Dropping the values did not improve collinearity in the model. It made is worse in some cases.
 
 c)
 
@@ -263,6 +289,8 @@ print(vif_x3)
 
 ```
 
+The reduced model significantly mitigated collinearity. All condition and VIF numbers are well within desired limits. This model is much better than the full model in terms of collinearity.
+
 d)
 
 ```{r echo = FALSE}
@@ -283,6 +311,8 @@ predict(fat_model3, newdata = fat_2, interval = "prediction")
 
 ```
 
+The two predictions both spanned roughly 20. This indicates the model is good for that range of values.
+
 f)
 
 ```{r echo = FALSE}
@@ -290,6 +320,8 @@ fat_3 <- as.data.frame(cbind(age = 40, weight = 130, height = 73))
 
 predict(fat_model3, newdata = fat_3, interval = "prediction")
 ```
+
+Negative values are in the range which are impossible. The values for age, weight, and height are too far different than the original dataset. This introduces a lot of error into the prediction.
 
 \newpage
 
@@ -529,8 +561,9 @@ where:
 $x_1$ -> Whether Software 2 was used  
 $x_2$ -> Whether Software 3 was used 
 
-$E(y | x_1 = 1, x_2 = 0) = (81.6 - 2.00) - 7.67 * 0 = 79.42 $   
-$E(y | x_1 = 0, x_2 = 1) = (81.6 - 7.67) - 2.00 * 0 = 73.93 $ 
+$E(y | x_1 = 1, x_2 = 0) = (81.6 - 2.00) - 7.67 * 0 = 79.42$  
+$E(y | x_1 = 0, x_2 = 1) = (81.6 - 7.67) - 2.00 * 0 = 73.93$ 
+
 
 ### Part II
 ```{r echo = FALSE}
@@ -563,8 +596,10 @@ $x_1$ -> Whether Software 2 was used
 $x_2$ -> Whether Software 3 was used  
 $x_3$ -> Sales from last quarter
 
-$E(y | x_1 = 1, x_2 = 0) = (-36.44 + 0.754) - 1.284 * 0 + 1.502 x_3 = -35.69 + 1.502 x_3$   
+
+$E(y | x_1 = 1, x_2 = 0) = (-36.44 + 0.754) - 1.284 * 0 + 1.502 x_3 = -35.69 + 1.502 x_3$  
 $E(y | x_1 = 0, x_2 = 1) = (-36.44 - 1.284) + 0.754 * 0 + 1.502 x_3 = -37.72 + 1.502 x_3$
+
 
 ### Part II - V
 
@@ -597,9 +632,9 @@ $x_3$ -> Interaction term between sales last quarter and software 4
 
 Part i)
 
-$E(y | x_1 = 1, x_2 = 0, x_3 = 0) = (-36.22 + 1.504) - 7.67 * 0 = -34.72 $   
-$E(y | x_1 = 0, x_2 = 1, x_3 = 0) = (-36.22 + 1.504) - 2.00 * 0 = -34.72 $  
-$E(y | x_1 = 0, x_2 = 0, x_3 = 1) = (-36.22 + 1.482) - 2.00 * 0 = -34.74$ 
+$E(y | x_1 = 1, x_2 = 0, x_3 = 0) = (-36.22 + 1.504) - 7.67 * 0 = -34.72$  
+$E(y | x_1 = 0, x_2 = 1, x_3 = 0) = (-36.22 + 1.504) - 2.00 * 0 = -34.72$   
+$E(y | x_1 = 0, x_2 = 0, x_3 = 1) = (-36.22 + 1.482) - 2.00 * 0 = -34.74$
 
 ```{r echo = FALSE}
 null_model1 <- lm(SalesThisQuarter ~ NULL, data = df_software)
