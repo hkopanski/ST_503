@@ -487,10 +487,12 @@ bptest(comm_model2, studentize = FALSE)
 ```
 
 **e part d and g)**
-```{r echo = FALSE}
+
+```{r echo = FALSE, fig.dim = c(6,6)}
 #e part d and g
 influenceIndexPlot(comm_model2)
 ```
+
 
 The diagnostic plots do reveal a few outliers, high leverage, and influential points. Data points 6 and 62 are outliers, while 3, 62, 65, and 80 indicate high leverage/influence. 3, 6, 62, and 80 can be dropped from the model. 65 can be left in the model since it is not too much higher in leverage than the other points.
 
@@ -619,50 +621,63 @@ sprintf("Variance explained by the software is %0.3f", (anova(sw_model2)[1,2] / 
 ## 5C
 
 ```{r echo = FALSE}
-sw_model3 <- lm(SalesThisQuarter ~ SalesLastQuarter:Software + SalesLastQuarter, data = df_software)
+sw_model3 <- lm(SalesThisQuarter ~ Software + SalesLastQuarter:Software + SalesLastQuarter, data = df_software)
 summary(sw_model3)
 ```
 
-### Part I - III
-y = -36.22 + 1.504 $x_1$ + 1.504 $x_2$ + 1.482 $x_3$  
+### Part I
+
+$y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \beta_4 x_1 x_3 + \beta_5 x_2 x_3$  
+
+y = -92.26 + 144.65 $x_1$ + 48.11 $x_2$ + 2.21 $x_3$ - 1.86 $x_1 x_3$ - 0.64 $x_2 x_3$  
 where:    
-$x_1$ -> Interaction term between sales last quarter and software 1    
-$x_2$ -> Interaction term between sales last quarter and software 2  
-$x_3$ -> Interaction term between sales last quarter and software 4  
+$x_1$ -> Indicator that Software 2 was used  
+$x_2$ -> Indicator that Software 3 was used  
+$x_3$ -> Sales last quarter  
+$x_1 x_3$ -> Interaction term between sales last quarter and software 2  
+$x_2 x_3$ -> Interaction term between sales last quarter and software 3  
 
-Part i)
+$E(y | x_1 = 1, x_2 = 0) = -92.26 + 2.21 x_3$   
+$E(y | x_1 = 0, x_2 = 1) = -92.26 + 48.11 + 2.21 x_3 - 0.624 x_4 = -44.15 + 1.59 x_3$  
+$E(y | x_1 = 0, x_2 = 0) = -92.26 + 144.65 + 2.21 x_3 - 1.86 x_3 = 52.39 + 0.35 x_3$  
 
-$E(y | x_1 = 1, x_2 = 0, x_3 = 0) = (-36.22 + 1.504) - 7.67 * 0 = -34.72$  
-$E(y | x_1 = 0, x_2 = 1, x_3 = 0) = (-36.22 + 1.504) - 2.00 * 0 = -34.72$   
-$E(y | x_1 = 0, x_2 = 0, x_3 = 1) = (-36.22 + 1.482) - 2.00 * 0 = -34.74$
+### Part II
+
+$H_0$ states that $\beta_0 = \beta_1 = \beta_2 = \beta_3 = \beta_4 = \beta_5 = 0$.  
+$H_A$ At least one $\beta_i$ is not equal to zero.
+
+### Part III
+
+$H_0: \beta_3 = 0$  
+$H_0: \beta_3 \ne 0$
+
+### Part IV
+
+A: F stat = 23.1
+B: p value = ~ 0
+C: Yes, we have enough evidence to reject the null in support of the alternate hypothesis.
+D: Yes, the p value is near zero.
+
+### Part V
+
+A: $H_0: E(\beta_0 | x_2 = 1)$ = 0
+B: t statistic = 4.534
+C: p value = ~ 0 
+D: Yes, the p value is less than  $\alpha = 0.05$, therefore statistically significant.
+
+## 5D
+
+One way of testing if Software 2 was different than 1 and 3 is to relevel the software factors to make 2 the reference and compare the results for 1 and 3. This can be accomplished as follows:
 
 ```{r echo = FALSE}
-null_model1 <- lm(SalesThisQuarter ~ NULL, data = df_software)
-knitr::kable(anova(null_model1, sw_model1))
-knitr::kable(anova(sw_model1))
+software <- relevel(df_software$Software, ref = 2)
 
-SST <- sum((df_software$SalesThisQuarter - mean(df_software$SalesThisQuarter))^2)
-SSR <- sum((sw_model1$fitted.values - mean(df_software$SalesThisQuarter))^2)
-SSE <- sum((df_software$SalesThisQuarter - sw_model1$fitted.values)^2)
-MSR <- SSR/(sw_model1$rank - 1)
-MSE <- SSE/(nrow(df_software) - sw_model1$rank)
-df_vector <- c(sw_model1$rank - 1, nrow(df_software) - sw_model1$rank, nrow(df_software) - 1)
-SS <- c(SSR, SSE, SST)
+sw_model4 <- lm(SalesThisQuarter ~ software + SalesLastQuarter:software + SalesLastQuarter, data = df_software)
 
-anova_table <- as_tibble(cbind(df_vector, SS))
-
-anova_table <- anova_table %>% mutate(MS = SS/df_vector)
-
-anova_table[3,3] <- NA
-
-F_stat <- c(as.numeric(anova_table[1,3] / anova_table[2,3]), NA, NA)
-
-p_value <- c(1 - (pf(F_stat[1], (sw_model1$rank - 1) , (nrow(df_software) - sw_model1$rank))), NA, NA)
-
-anova_table <- cbind(anova_table, F_stat, p_value)
-
-knitr::kable(anova_table)
+summary(sw_model4)
 ```
+
+As can be seen in the results the intercept when using Software 2 is 52.4 and the other two are -144.7 and -96.5 for 1 and 3 respectively. Furthermore, the individual p values indicate that the results are statistically significant. This indicates that Software 2 produced very different results than software 1 and 3. The null hypothesis in this case would state that $\beta_{software 2}$ is equal to $\beta_{software 1}$ and $\beta_{software 3}$. The alternative hypothesis states that it is not equal to the other two coefficients.
 
 \newpage
 
@@ -740,9 +755,15 @@ In this case, the null hypothesis can be rejected at the 0.05 significance level
 
 **part e. ii)**
 
+Drug 1 on average allows the pig to gain more weight than Drug 2. This is indicated by the negative coefficient for Drug 2 when Drug 1 is the reference. This points to a weight penalty when using Drug 2.
+
 **part e. iii)**
 
+Whether Drug 3 or Drug 1 allows the pig to gain more weight is inconclusive. We do not have enough evidence to reject the hypothesis that Drug 1 and Drug 3 result in equal effects to pig weight. This is shown by the high p value, indicating that the possible effect of Drug 3 is zero.  
+
 **part e. iv)**
+
+Whether Drug 3 or Drug 2 allows the pig to gain more weight is inconclusive. We do not have enough evidence to reject the hypothesis that Drug 1 and Drug 3 result in equal effects to pig weight. This is shown by the high p value, indicating that the possible effect of Drug 3 is zero. 
 
 \newpage 
 
