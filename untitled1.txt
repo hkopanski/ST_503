@@ -1,0 +1,3 @@
+SST <- sum((y_values - mean(y_values))^2)
+SSR <- sum((temp_model$fitted.values - mean(y_values))^2)
+SSE <- sum((y_values - temp_model$fitted.values)^2)
